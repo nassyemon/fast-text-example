@@ -3,4 +3,3 @@ data/model.vec
 data/wnjpn.db
 data/entity_vector.model.bin
 data/word2vec.gensim.model
-**/*.pyc
