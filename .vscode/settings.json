@@ -2,5 +2,5 @@
     "editor.insertSpaces": true,
     "editor.tabSize": 4,
     "editor.renderWhitespace": "all",
-    "python.pythonPath": "C:\\Users\\00991442\\AppData\\Local\\Programs\\Python\\Python37\\python.exe"
+    "python.pythonPath": "/Users/ec2-user/anaconda3/bin/python"
 }

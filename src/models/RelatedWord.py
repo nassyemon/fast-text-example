@@ -60,11 +60,11 @@ class RelatedWord:
                 word,
                 float(similarity),
                 float(sum(map(lambda x: erf(x, negative_boost), norm_distance))),
-                dict([(search, (similarity+search_scores[i], normalized[i])) for i, search in enumerate(searches)])
+                dict([(search, (similarity+search_scores[i], norm_distance[i])) for i, search in enumerate(searches)])
             )
             for (word, similarity, norm_distance, search_scores) in normalized]
         )]
-        sorted_result =  [*sorted(coocs, key=lambda x:-x[1])]
+        sorted_result =  [*sorted(coocs, key=lambda x:-x[2])]
         if limit > 0:
             return [*map(self.to_dict_result, sorted_result[0:limit])]
         return [*map(self.to_dict_result, sorted_result)]

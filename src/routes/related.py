@@ -8,7 +8,7 @@ from ..modules.response_helper import get_default_repsonse
 related = Blueprint('related', __name__)
 
 defaultOptions = {
-    "related_word_topn": 1000,
+    "related_word_topn": 10000,
     "negative_boost": 1.0,
     "limit": 50,
 }
