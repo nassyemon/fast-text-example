@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify, request
+from flask_cors import CORS
 from injector import Module, Injector, inject, singleton
 import os
 from flask_injector import FlaskInjector
@@ -14,6 +15,7 @@ from .routes.related import related
 
 # initialize our Flask application and pre-trained model
 app = Flask(__name__)
+CORS(app)
 app.config['JSON_AS_ASCII'] = False
 wndb_filepath = os.path.join(os.path.dirname(__file__), '../data/wnjpn.db')
 w2v_model_filepath = os.path.join(os.path.dirname(__file__), '../data/entity_vector.model.bin')

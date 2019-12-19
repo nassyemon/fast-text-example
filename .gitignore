@@ -4,3 +4,5 @@ data/wnjpn.db
 data/entity_vector.model.bin
 data/word2vec.gensim.model
 __pycache__
+node_modules
+.next

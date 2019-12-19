@@ -33,8 +33,8 @@ class RelatedWord:
         negative_boost:float = 1.0,
     ) -> List[Tuple[str, float, float, Dict[str, float]]]:
         combi = [
-        (word, score, [score - self.w2v.similarity(word, search) for search in searches])
-        for (word, score) in self.w2v.most_similar(
+        (word, similarity, [similarity - self.w2v.similarity(word, search) for search in searches])
+        for (word, similarity) in self.w2v.most_similar(
             positive=searches,
             topn=related_word_topn,
             )
@@ -48,23 +48,33 @@ class RelatedWord:
         normalized = [
             (
                 word,
-                score, 
+                similarity, 
                 [(search_scores[i]-avg_dists[i])/sigma_dists[i] for i, s in enumerate(search_scores)],
                 search_scores
             )
-            for (word, score, search_scores) in combi
+            for (word, similarity, search_scores) in combi
         ]
         coocs = [*filter(None, [
             # None if len([*filter(lambda x: x > score, search_scores)]) > 0 else
             (
                 word,
-                float(score),
-                float(sum(map(lambda x: erf(x, negative_boost), normalized))),
-                dict([(search, (score+search_scores[i], normalized[i])) for i, search in enumerate(searches)])
+                float(similarity),
+                float(sum(map(lambda x: erf(x, negative_boost), norm_distance))),
+                dict([(search, (similarity+search_scores[i], normalized[i])) for i, search in enumerate(searches)])
             )
-            for (word, score, normalized, search_scores) in normalized]
+            for (word, similarity, norm_distance, search_scores) in normalized]
         )]
-        sorted_result =  [*sorted(coocs, key=lambda x:-x[2])]
+        sorted_result =  [*sorted(coocs, key=lambda x:-x[1])]
         if limit > 0:
-            return sorted_result[0:limit]
-        return sorted_result
+            return [*map(self.to_dict_result, sorted_result[0:limit])]
+        return [*map(self.to_dict_result, sorted_result)]
+
+    @staticmethod
+    def to_dict_result(record):
+        (word, score, similarity, dict_scores) = record
+        return {
+            "word": word,
+            "score": score,
+            "similarity": similarity,
+            "base_scores": dict_scores
+        }

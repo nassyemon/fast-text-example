@@ -1,0 +1,27 @@
+{
+  "name": "wordnet-fe",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "next"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/takanashi1986/wordnet-fasttext.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/takanashi1986/wordnet-fasttext/issues"
+  },
+  "homepage": "https://github.com/takanashi1986/wordnet-fasttext#readme",
+  "dependencies": {
+    "babel-plugin-styled-components": "^1.10.6",
+    "next": "^9.1.6",
+    "query-string": "^6.9.0",
+    "react": "^16.12.0",
+    "react-dom": "^16.12.0",
+    "styled-components": "^4.4.1"
+  }
+}
