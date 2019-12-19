@@ -4,4 +4,3 @@ def get_search_param(request, search_key="q"):
         return None
     searches = [*filter(lambda x: len(x) > 0, query_search.split(" "))]
     return searches[0] if len(searches) < 2 else searches
-    
