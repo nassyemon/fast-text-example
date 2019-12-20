@@ -31,12 +31,14 @@ class RelatedWord:
         related_word_topn: int = 100,
         limit: int = 50,
         negative_boost:float = 1.0,
+        remove_entity: bool = True
     ) -> List[Tuple[str, float, float, Dict[str, float]]]:
         combi = [
         (word, similarity, [similarity - self.w2v.similarity(word, search) for search in searches])
         for (word, similarity) in self.w2v.most_similar(
             positive=searches,
             topn=related_word_topn,
+            remove_entity=remove_entity
             )
         ]
         dists = [
@@ -60,7 +62,7 @@ class RelatedWord:
                 word,
                 float(similarity),
                 float(sum(map(lambda x: erf(x, negative_boost), norm_distance))),
-                dict([(search, (similarity+search_scores[i], norm_distance[i])) for i, search in enumerate(searches)])
+                dict([(search, (similarity-search_scores[i], norm_distance[i])) for i, search in enumerate(searches)])
             )
             for (word, similarity, norm_distance, search_scores) in normalized]
         )]
@@ -71,7 +73,7 @@ class RelatedWord:
 
     @staticmethod
     def to_dict_result(record):
-        (word, score, similarity, dict_scores) = record
+        (word, similarity, score, dict_scores) = record
         return {
             "word": word,
             "score": score,

@@ -52,6 +52,7 @@ class Synonyms:
         neigbhor_boost: float=1.0,
         synonym_boost: float=1.0,
         neigbhor_synonym_boost=0.1,
+        neigbhor_aggregate_entity: bool=True,
         similar_threshold: int=1,
     ) -> List[Dict]:
         synoyms_from_search = self.wordnet_search.get_words_in_shared_synsets(
@@ -61,6 +62,7 @@ class Synonyms:
         neigbhor_list= self.w2v.most_similar(
             search,
             topn=neigbhor_topn,
+            aggregate_entity=neigbhor_aggregate_entity,
         )
         if use_neigbhor_synonym:
             # similar_words = [*map(lambda x:x[0],neigbhor_list)]
