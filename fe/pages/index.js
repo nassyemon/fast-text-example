@@ -3,6 +3,8 @@ import getSynonym from "./modules/getSyononym";
 import getRelatedWord from "./modules/getRelatedWord";
 import searchDocs from "./modules/searchDocs";
 import countWords from "./modules/countWords";
+import searchAlternatives from "./modules/searchAlternatives";
+import { pickWordsWithOccurrence } from "./modules/utils";
 import {
   Search,
   SearchTerm,
@@ -63,7 +65,14 @@ export default function App() {
     ];
     const wordCounts = await countWords(wordList);
     setWordCountResults(wordCounts);
-    console.log(wordCounts);
+    terms.map(async (term, i) => {
+      const pre = terms.slice(0, i);
+      const post = terms.slice(i+1);
+      const synonyms = syonoymResults[term];
+      const alternatives = pickWordsWithOccurrence(synonyms, wordCounts);
+      const searches = await searchAlternatives(pre, post, alternatives);
+      console.log(searches);
+    })
   }
   const handleKeyDown = event => {
     if(event.keyCode == 13){
@@ -150,9 +159,9 @@ function SearchResult({ searchResults }) {
   );
 }
 
-function SearchItemText({ highlight }) {
+function SearchItemText({ text, highlight }) {
   if (!Array.isArray(highlight)) {
-    return null;
+    return <SearchItemSpan >{text}</SearchItemSpan>;
   }
   return highlight.map(([fragment, hilighted], i) => hilighted? (
     <SearchItemHighlight key={i}>{fragment}</SearchItemHighlight>

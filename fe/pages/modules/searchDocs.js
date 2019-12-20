@@ -1,8 +1,7 @@
 import client from "./esclient";
 import splitByTag from "./splitByTag"
 
-
-export default async (terms, slop=50) => {
+export default async (terms, slop=100) => {
   const ret = await client.search({
       index: "docs",
       body: {
@@ -43,7 +42,7 @@ export default async (terms, slop=50) => {
     size: 10,
   });
   const { hits: { total: { value: totalValue } , hits } } = ret;
-  console.log(hits);
+  // console.log(hits);
   return {
       terms,
       total: totalValue,
@@ -52,6 +51,12 @@ export default async (terms, slop=50) => {
 };
 
 function parseDoc({ _source, highlight }) {
+    if (!highlight) {
+        return {
+            ..._source,
+            highlight: null,
+        };
+    }
     const { text } = highlight;
     const higlighted = Array.isArray(text) && text.length > 0 ? text[0]: null;
     return {
