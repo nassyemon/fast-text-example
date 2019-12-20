@@ -18,6 +18,8 @@
   "homepage": "https://github.com/takanashi1986/wordnet-fasttext#readme",
   "dependencies": {
     "babel-plugin-styled-components": "^1.10.6",
+    "elasticsearch": "^16.5.0",
+    "lodash": "^4.17.15",
     "next": "^9.1.6",
     "query-string": "^6.9.0",
     "react": "^16.12.0",

@@ -1,47 +1,75 @@
-import React from 'react'
-import styled from 'styled-components';
+import React, { Fragment } from 'react'
 import getSynonym from "./modules/getSyononym";
 import getRelatedWord from "./modules/getRelatedWord";
+import searchDocs from "./modules/searchDocs";
+import countWords from "./modules/countWords";
+import {
+  Search,
+  SearchTerm,
+  SearchButton,
+  Wrap,
+  WordResults,
+  SyononymResult,
+  SyononymHeader,
+  SyonoymList,
+  Syononym,
+  RelatedWordResult,
+  RelatedWordHeader,
+  WordCount,
+} from "./atoms/styled";
+import {
+  SearchResults,
+  BaseSearchResult,
+  BaseSearchHeader,
+  BaseSearchList,
+  BaseSearchItem,
+  SearchItemSpan,
+  SearchItemHighlight,
+} from "./atoms/searchWords";
 
 export default function App() {
   const [searchTerm, setSearchTerm] = React.useState("明るい 人柄");
   const [terms, setTerms] = React.useState([]);
   const [searchResults, setSearchResults] = React.useState({});
   const [relatedWordResults, setRelatedWordResults] = React.useState({});
+  const [baseDocResults, setBaseDocResults] = React.useState(null);
+  const [wordCountResults, setWordCountResults] = React.useState({});
   const [loaded, setLoaded] = React.useState(false);
   const handleChange = event => {
     setSearchTerm(event.target.value);
   };
-  const handleClick = async () => {
+  const handleSearch = async () => {
     setLoaded(false);
+    setBaseDocResults(null);
     const terms = searchTerm.split(/\s/).filter(s => s.length > 0);
-    setTerms(terms)
-    const [synonyms, relatedWord] = await Promise.all([
+    setTerms([...terms])
+    const [synonyms, relatedWord, baseDocs] = await Promise.all([
       Promise.all(terms.map(async term => [term, await getSynonym(term)])),
       terms.length > 1 ? getRelatedWord(terms): null,
+      searchDocs(terms),
     ])
+    setBaseDocResults(baseDocs);
       
-    const syonoymResults = synonyms.reduce((acc, [term, result]) => ({
+    const syonoymResults = synonyms.reduce((acc, [term, syonoymList]) => ({
         ...acc,
-        [term]: result,
+        [term]: syonoymList,
     }), {});
     setSearchResults(syonoymResults);
     setRelatedWordResults(relatedWord);
     setLoaded(true);
+    const wordList = [
+      ...synonyms.reduce((acc, [_, syonoymList])=> [...acc, ...syonoymList.map(({word}) => word)], []),
+      ...(Array.isArray(relatedWord) ? relatedWord.map(({word}) => word): []),
+    ];
+    const wordCounts = await countWords(wordList);
+    setWordCountResults(wordCounts);
+    console.log(wordCounts);
   }
   const handleKeyDown = event => {
     if(event.keyCode == 13){
-        handleClick();
+      handleSearch();
     }
   }
-/*
- React.useEffect(() => {
-    const results = people.filter(person =>
-      person.toLowerCase().includes(searchTerm)
-    );
-    setSearchResults(results);
-  }, [searchTerm]);
-*/
   return (
       <Wrap>
         <Search>
@@ -52,7 +80,7 @@ export default function App() {
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
             />
-            <SearchButton onClick={handleClick}>検索</SearchButton>
+            <SearchButton onClick={handleSearch}>検索</SearchButton>
         </Search>
         <WordResults>
           {terms.map(term => (
@@ -61,10 +89,13 @@ export default function App() {
               <SyonoymList>
                 {
                   Array.isArray(searchResults[term]) && searchResults[term].map(
-                        ({ i, word }) => (
-                          <Syononym key={word}>
-                            {word}
-                          </Syononym>
+                    ({ word }) => (
+                      <Syononym count={wordCountResults[word]} key={word}>
+                        {word}
+                        <WordCount count={wordCountResults[word]}>
+                          {typeof wordCountResults[word] === "number" ? `(${wordCountResults[word]})`: "(*)"}
+                        </WordCount>
+                      </Syononym>
                     )
                 )}
               </SyonoymList>
@@ -73,109 +104,58 @@ export default function App() {
           {loaded && terms.length > 1 && (
               <RelatedWordResult>
                 <RelatedWordHeader>関連語:{terms.join(" × ")}</RelatedWordHeader>
-                <RelatedWordList>
-                  {
-                    Array.isArray(relatedWordResults) && relatedWordResults.map(
-                          ({ i, word }) => (
-                            <RelatedWord key={word}>
-                              {word}
-                            </RelatedWord>
-                      )
-                  )}
-              </RelatedWordList>
+              <SyonoymList>
+                {
+                  Array.isArray(relatedWordResults) && relatedWordResults.map(
+                    ({ word }) => (
+                        <Syononym count={wordCountResults[word]} key={word}>
+                          {word}
+                          <WordCount count={wordCountResults[word]}>
+                            {typeof wordCountResults[word] === "number" ? `(${wordCountResults[word]})`: "(*)"}
+                          </WordCount>
+                        </Syononym>
+                    )
+                )}
+              </SyonoymList>
             </RelatedWordResult>
           )}
           </WordResults>
+          <SearchResults>
+            <SearchResult searchResults={baseDocResults} />
+          </SearchResults>
       </Wrap>
   );
 }
 
- const Search = styled.div`
-  width: 50%;
-  position: relative;
-  display: flex;
-`;
+function SearchResult({ searchResults }) {
+  if(!searchResults) {
+    return null;
+  }
+  const { terms, total, results }= searchResults;
+  if (!Array.isArray(terms)) {
+    return <div>"term error"</div>;
+  }
+  const title = Array.isArray(results) && total > 0 ?
+     `検索結果：${terms.join(" × ")} - 全${total}件中${results.length}件を表示`
+     : `検索結果：${terms.join(" × ")} 0件`
+  return (
+    <BaseSearchResult>
+      <BaseSearchHeader>{title}</BaseSearchHeader>
+      {results.map(item => (
+        <BaseSearchItem key={item.doc_id}>
+          {SearchItemText(item)}
+        </BaseSearchItem>
+      ))}
+    </BaseSearchResult>
+  );
+}
 
-const SearchTerm = styled.input.attrs({
-    type: "text"
-})`
-  width: 100%;
-  border: 3px solid #00B4CC;
-  border-right: none;
-  padding: 5px;
-  height: 20px;
-  border-radius: 5px 0 0 5px;
-  outline: none;
-  color: #555555;
-  &:focus {
-    font-weight: bold;
-    color: #000000;
-  },
-`;
-
-const SearchButton = styled.button.attrs({ 
-    type: "submit"
-})`
-  width: 80px;
-  height: 36px;
-  border: 1px solid #00B4CC;
-  background: #00B4CC;
-  text-align: center;
-  color: #fff;
-  border-radius: 0 5px 5px 0;
-  cursor: pointer;
-  font-size: 20px;
-`;
-
-const Wrap = styled.div`
-  width: 100%;
-  top: 10%;
-  left: 10%;
-  position: absolute;
-`;
-
-const WordResults = styled.div`
-  width: 80%;
-  position: relative;
-`;
-
-const SyononymResult = styled.div`
-  width: 100%;
-  margin: 20px 0px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  border: 3px solid #00B4CC;
-`
-
-const SyononymHeader = styled.h3`
-  padding-left: 10px;
-  margin: 0px;
-  font-weight: bolder;
-  background: #00B4CC;
-  color: #ffffff;
-`;
-
-const SyonoymList = styled.div`
-  display:flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-`
-
-const Syononym = styled.span`
-  margin: 0px 5px;
-`;
-
-const RelatedWordResult = styled(SyononymResult)`
-  border-color: #cc317c;
-`
-
-const RelatedWordHeader = styled(SyononymHeader)`
-  background: #cc317c;
-`;
-
-const RelatedWordList = styled(SyonoymList)`
-`
-
-const RelatedWord = styled(Syononym)`
-`;
+function SearchItemText({ highlight }) {
+  if (!Array.isArray(highlight)) {
+    return null;
+  }
+  return highlight.map(([fragment, hilighted], i) => hilighted? (
+    <SearchItemHighlight key={i}>{fragment}</SearchItemHighlight>
+  ) : (<SearchItemSpan key={i}>{fragment}</SearchItemSpan>)
+  );
+}
