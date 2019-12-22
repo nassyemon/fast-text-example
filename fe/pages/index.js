@@ -1,8 +1,11 @@
 import React, { Fragment } from 'react'
+import Router, { useRouter } from "next/router";
+import Link from 'next/link'
 import getSynonym from "./modules/getSyononym";
 import getRelatedWord from "./modules/getRelatedWord";
 import searchDocs from "./modules/searchDocs";
 import countWords from "./modules/countWords";
+import handleSearchBase from "./modules/handleSearchBase";
 import searchAlternatives from "./modules/searchAlternatives";
 import { pickWordsWithOccurrence } from "./modules/utils";
 import {
@@ -29,50 +32,47 @@ import {
   SearchItemHighlight,
 } from "./atoms/searchWords";
 
-export default function App() {
-  const [searchTerm, setSearchTerm] = React.useState("明るい 人柄");
-  const [terms, setTerms] = React.useState([]);
-  const [searchResults, setSearchResults] = React.useState({});
-  const [relatedWordResults, setRelatedWordResults] = React.useState({});
-  const [baseDocResults, setBaseDocResults] = React.useState(null);
-  const [wordCountResults, setWordCountResults] = React.useState({});
-  const [loaded, setLoaded] = React.useState(false);
+const DEFAULT_SEARCH_TERMS = "明るい 人柄";
+
+/*
+terms,
+baseDocs,
+syonoymResults,
+relatedWord,
+wordCounts,
+*/
+function App(props) {
+  const router = useRouter();
+  const [searchTerm, setSearchTerm] = React.useState(props.searchTerm || DEFAULT_SEARCH_TERMS);
+  const [terms, setTerms] = React.useState(props.terms || []);
+  const [relatedWord, setRelatedWord] = React.useState(props.relatedWord || {});
+  const [baseDocs, setBaseDocs] = React.useState(props.baseDocs || null);
+  const [wordCounts, setWordCounts] = React.useState(props.wordCounts || {});
+  const [synonyms, setSynonyms] = React.useState(props.synonyms || {});
+  const [loaded, setLoaded] = React.useState(props.loaded || false);
   const handleChange = event => {
     setSearchTerm(event.target.value);
   };
   const handleSearch = async () => {
+    router.push(Router.pathname, `/?q=${searchTerm}`, { shallow: true });
+    const ret = await handleSearchBase(searchTerm)
     setLoaded(false);
-    setBaseDocResults(null);
-    const terms = searchTerm.split(/\s/).filter(s => s.length > 0);
-    setTerms([...terms])
-    const [synonyms, relatedWord, baseDocs] = await Promise.all([
-      Promise.all(terms.map(async term => [term, await getSynonym(term)])),
-      terms.length > 1 ? getRelatedWord(terms): null,
-      searchDocs(terms),
-    ])
-    setBaseDocResults(baseDocs);
-      
-    const syonoymResults = synonyms.reduce((acc, [term, syonoymList]) => ({
-        ...acc,
-        [term]: syonoymList,
-    }), {});
-    setSearchResults(syonoymResults);
-    setRelatedWordResults(relatedWord);
-    setLoaded(true);
-    const wordList = [
-      ...synonyms.reduce((acc, [_, syonoymList])=> [...acc, ...syonoymList.map(({word}) => word)], []),
-      ...(Array.isArray(relatedWord) ? relatedWord.map(({word}) => word): []),
-    ];
-    const wordCounts = await countWords(wordList);
-    setWordCountResults(wordCounts);
+    setBaseDocs(null);
+    setTerms([...ret.terms]);
+    setBaseDocs(baseDocs);
+    setSynonyms(ret.synonyms);
+    setRelatedWord(ret.relatedWord);
+    setWordCounts(ret.wordCounts);
+    const { terms, synonyms } = ret;
     terms.map(async (term, i) => {
       const pre = terms.slice(0, i);
       const post = terms.slice(i+1);
-      const synonyms = syonoymResults[term];
-      const alternatives = pickWordsWithOccurrence(synonyms, wordCounts);
+      const synonymForTerm = synonyms[term];
+      const alternatives = pickWordsWithOccurrence(synonymForTerm, wordCounts);
       const searches = await searchAlternatives(pre, post, alternatives);
       console.log(searches);
     })
+    setLoaded(true);
   }
   const handleKeyDown = event => {
     if(event.keyCode == 13){
@@ -97,12 +97,12 @@ export default function App() {
               <SyononymHeader>類語:{term}</SyononymHeader>
               <SyonoymList>
                 {
-                  Array.isArray(searchResults[term]) && searchResults[term].map(
+                  Array.isArray(synonyms[term]) && synonyms[term].map(
                     ({ word }) => (
-                      <Syononym count={wordCountResults[word]} key={word}>
+                      <Syononym count={wordCounts[word]} key={word}>
                         {word}
-                        <WordCount count={wordCountResults[word]}>
-                          {typeof wordCountResults[word] === "number" ? `(${wordCountResults[word]})`: "(*)"}
+                        <WordCount count={wordCounts[word]}>
+                          {typeof wordCounts[word] === "number" ? `(${wordCounts[word]})`: "(*)"}
                         </WordCount>
                       </Syononym>
                     )
@@ -110,17 +110,17 @@ export default function App() {
               </SyonoymList>
             </SyononymResult>
           ))}
-          {loaded && terms.length > 1 && (
+          {Array.isArray(relatedWord) && (
               <RelatedWordResult>
                 <RelatedWordHeader>関連語:{terms.join(" × ")}</RelatedWordHeader>
               <SyonoymList>
                 {
-                  Array.isArray(relatedWordResults) && relatedWordResults.map(
+                  relatedWord.length > 0 && relatedWord.map(
                     ({ word }) => (
-                        <Syononym count={wordCountResults[word]} key={word}>
+                        <Syononym count={wordCounts[word]} key={word}>
                           {word}
-                          <WordCount count={wordCountResults[word]}>
-                            {typeof wordCountResults[word] === "number" ? `(${wordCountResults[word]})`: "(*)"}
+                          <WordCount count={wordCounts[word]}>
+                            {typeof wordCounts[word] === "number" ? `(${wordCounts[word]})`: "(*)"}
                           </WordCount>
                         </Syononym>
                     )
@@ -130,17 +130,40 @@ export default function App() {
           )}
           </WordResults>
           <SearchResults>
-            <SearchResult searchResults={baseDocResults} />
+            <SearchResult synonymResults={baseDocs} />
           </SearchResults>
       </Wrap>
   );
 }
 
-function SearchResult({ searchResults }) {
-  if(!searchResults) {
+App.getInitialProps = async ({ query }) => {
+  console.error(query);
+  const searchTerm = query.q || DEFAULT_SEARCH_TERMS;
+  const {
+    terms,
+    baseDocs,
+    synonyms,
+    relatedWord,
+    wordCounts,
+  } = await handleSearchBase(searchTerm);
+  return {
+    searchTerm,
+    terms,
+    baseDocs,
+    synonyms,
+    relatedWord,
+    wordCounts,
+    loaded: false,
+  };
+}
+
+export default App;
+
+function SearchResult({ synonymResults }) {
+  if(!synonymResults) {
     return null;
   }
-  const { terms, total, results }= searchResults;
+  const { terms, total, results }= synonymResults;
   if (!Array.isArray(terms)) {
     return <div>"term error"</div>;
   }

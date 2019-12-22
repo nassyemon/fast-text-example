@@ -1,3 +1,4 @@
+import fetch from "node-fetch";
 import client from "./esclient";
 import splitByTag from "./splitByTag"
 

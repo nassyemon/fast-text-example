@@ -1,6 +1,5 @@
 import client from "./esclient";
 
-
 export default async (terms) => {
   // console.error(terms);
   const aggs = terms.reduce((acc, word) => {
